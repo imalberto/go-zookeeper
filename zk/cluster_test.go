@@ -121,7 +121,11 @@ func TestNoQuorum(t *testing.T) {
 
 	// Kill the ZooKeeper leader leaving the cluster without quorum.
 	DefaultLogger.Printf("    Kill the leader")
-	tc.StopServer(hasSessionEvent2.Server)
+	// Ensure that the first StateDisconnected event that is captured is
+	// from this session
+	go func() {
+		tc.StopServer(hasSessionEvent2.Server)
+	}()
 
 	// Make sure that we keep retrying connecting to the only remaining
 	// ZooKeeper server, but the attempts are being dropped because there is
@@ -138,9 +142,9 @@ func TestNoQuorum(t *testing.T) {
 			firstDisconnect = disconnectedEvent
 			continue
 		}
-		if disconnectedEvent.Server != firstDisconnect.Server {
+		if hasSessionEvent2.Server != firstDisconnect.Server {
 			t.Fatalf("Disconnect from wrong server: expected=%s, actual=%s",
-				firstDisconnect.Server, disconnectedEvent.Server)
+				firstDisconnect.Server, hasSessionEvent2.Server)
 		}
 	}
 
