@@ -6,7 +6,7 @@ sudo: false
 
 branches:
   only:
-    - master
+    - testing
 
 before_install:
   - wget http://apache.claz.org/zookeeper/zookeeper-3.5.2-alpha/zookeeper-3.5.2-alpha.tar.gz
@@ -22,7 +22,7 @@ script:
   - go vet ./...
   - go test -i -race ./...
   - go test -race -covermode atomic -coverprofile=profile.cov ./zk
-  - goveralls -coverprofile=profile.cov -service=travis-ci
+  # - goveralls -coverprofile=profile.cov -service=travis-ci
 
 env:
   global:

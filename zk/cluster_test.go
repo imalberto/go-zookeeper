@@ -1,6 +1,7 @@
 package zk
 
 import (
+	"log"
 	"sync"
 	"testing"
 	"time"
@@ -123,13 +124,15 @@ func TestNoQuorum(t *testing.T) {
 	DefaultLogger.Printf("    Kill the leader")
 	// Ensure that the first StateDisconnected event that is captured is
 	// from this session
-	go func() {
-		tc.StopServer(hasSessionEvent2.Server)
-	}()
+	// go func() {
+	// 	tc.StopServer(hasSessionEvent2.Server)
+	// }()
+	tc.StopServer(hasSessionEvent2.Server)
 
 	// Make sure that we keep retrying connecting to the only remaining
 	// ZooKeeper server, but the attempts are being dropped because there is
 	// no quorum.
+	DefaultLogger.Printf("    ==================================")
 	DefaultLogger.Printf("    Retrying no luck...")
 	var firstDisconnect *Event
 	begin := time.Now()
@@ -142,10 +145,14 @@ func TestNoQuorum(t *testing.T) {
 			firstDisconnect = disconnectedEvent
 			continue
 		}
-		if hasSessionEvent2.Server != firstDisconnect.Server {
+		if disconnectedEvent.Server != firstDisconnect.Server {
 			t.Fatalf("Disconnect from wrong server: expected=%s, actual=%s",
-				firstDisconnect.Server, hasSessionEvent2.Server)
+				firstDisconnect.Server, disconnectedEvent.Server)
 		}
+		// if hasSessionEvent2.Server != firstDisconnect.Server {
+		// 	t.Fatalf("Disconnect from wrong server: expected=%s, actual=%s",
+		// 		firstDisconnect.Server, hasSessionEvent2.Server)
+		// }
 	}
 
 	// Start a ZooKeeper node to restore quorum.
@@ -242,10 +249,14 @@ func NewStateLogger(eventCh <-chan Event) *EventLogger {
 		defer el.wg.Done()
 		for event := range eventCh {
 			el.lock.Lock()
+			// For each event, let's print the list and order of the watchers
 			for _, sw := range el.watchers {
 				if !sw.triggered && sw.matcher(event) {
+					log.Printf("      [%s] %s eventWatcher: %+v <<<<<<", event.Server, event.State, sw)
 					sw.triggered = true
 					sw.matchCh <- event
+					// } else {
+					// log.Printf("      [%s] %s eventWatcher: %+v", event.Server, event.State, sw)
 				}
 			}
 			DefaultLogger.Printf("    event received: %v\n", event)
