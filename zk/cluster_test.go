@@ -128,6 +128,10 @@ func TestNoQuorum(t *testing.T) {
 	// 	tc.StopServer(hasSessionEvent2.Server)
 	// }()
 	tc.StopServer(hasSessionEvent2.Server)
+	tmpEvent := sl.NewWatcher(sessionStateMatcher(StateDisconnected)).Wait(4 * time.Second)
+	if tmpEvent == nil {
+		t.Fatalf("StateDisconnected event not received from server: %s", hasSessionEvent2.Server)
+	}
 
 	// Make sure that we keep retrying connecting to the only remaining
 	// ZooKeeper server, but the attempts are being dropped because there is
