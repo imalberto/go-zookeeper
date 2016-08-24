@@ -21,7 +21,8 @@ script:
   - go fmt ./...
   - go vet ./...
   - go test -i -race ./...
-  - go test -v -race -covermode atomic -coverprofile=profile.cov ./zk
+  - go test -race ./zk
+  # - go test -v -race -covermode atomic -coverprofile=profile.cov ./zk
   # - goveralls -coverprofile=profile.cov -service=travis-ci
 
 env:
