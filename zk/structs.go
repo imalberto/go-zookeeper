@@ -112,6 +112,14 @@ type auth struct {
 	Auth   []byte
 }
 
+type WatcherType int32
+
+const (
+	WatcherTypeChildren = 1
+	WatcherTypeData     = 2
+	WatcherTypeAny      = 3
+)
+
 // Generic request structs
 
 type pathRequest struct {
@@ -252,6 +260,12 @@ type setWatchesRequest struct {
 
 type setWatchesResponse struct{}
 
+type removeWatchesRequest struct {
+	Path string
+	Type WatcherType
+}
+type removeWatchesResponse struct{}
+
 type syncRequest pathRequest
 type syncResponse pathResponse
 
@@ -270,6 +284,7 @@ type multiResponseOp struct {
 	Header multiHeader
 	String string
 	Stat   *Stat
+	Err    ErrCode
 }
 type multiResponse struct {
 	Ops        []multiResponseOp
@@ -327,6 +342,8 @@ func (r *multiRequest) Decode(buf []byte) (int, error) {
 }
 
 func (r *multiResponse) Decode(buf []byte) (int, error) {
+	var multiErr error
+
 	r.Ops = make([]multiResponseOp, 0)
 	r.DoneHeader = multiHeader{-1, true, -1}
 	total := 0
@@ -347,6 +364,8 @@ func (r *multiResponse) Decode(buf []byte) (int, error) {
 		switch header.Type {
 		default:
 			return total, ErrAPIError
+		case opError:
+			w = reflect.ValueOf(&res.Err)
 		case opCreate:
 			w = reflect.ValueOf(&res.String)
 		case opSetData:
@@ -362,8 +381,12 @@ func (r *multiResponse) Decode(buf []byte) (int, error) {
 			total += n
 		}
 		r.Ops = append(r.Ops, res)
+		if multiErr == nil && res.Err != errOk {
+			// Use the first error as the error returned from Multi().
+			multiErr = res.Err.toError()
+		}
 	}
-	return total, nil
+	return total, multiErr
 }
 
 type watcherEvent struct {
@@ -587,6 +610,8 @@ func requestStructForOp(op int32) interface{} {
 		return &SetDataRequest{}
 	case opSetWatches:
 		return &setWatchesRequest{}
+	case opRemoveWatches:
+		return &removeWatchesRequest{}
 	case opSync:
 		return &syncRequest{}
 	case opSetAuth:
